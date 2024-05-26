@@ -1,3 +1,6 @@
+# Augmented Dickey-Fuller Test
+from statsmodels.tsa.stattools import adfuller
+
 def add_bollinger_bands(df):
     sma_20 = df["Close"].rolling(20)
     mean = sma_20.mean()
@@ -31,6 +34,49 @@ def add_macd(df):
     df["MACD"] = macd
     df["MACD-s"] = signal
     df["MACD-h"] = diff
+
+
+def ADF_test(timeseries, dataDesc):
+    print(' > Is the {} stationary ?'.format(dataDesc))
+    dftest = adfuller(timeseries.dropna(), autolag='AIC')
+    print('Test statistic = {:.3f}'.format(dftest[0]))
+    print('P-value = {:.3f}'.format(dftest[1]))
+    print('Critical values :')
+    for k, v in dftest[4].items():
+        print('\t{}: {} - The data is {} stationary with {}% confidence'.format(k, v, 'not' if v<dftest[0] else '', 100-int(k[:-1])))
+
+import itertools
+
+def sarima_grid_search(y,seasonal_period):
+    p = d = q = range(0, 2)
+    pdq = list(itertools.product(p, d, q))
+    seasonal_pdq = [(x[0], x[1], x[2],seasonal_period) for x in list(itertools.product(p, d, q))]
+    
+    mini = float('+inf')
+    
+    
+    for param in pdq:
+        for param_seasonal in seasonal_pdq:
+            try:
+                mod = sm.tsa.statespace.SARIMAX(y,
+                                                order=param,
+                                                seasonal_order=param_seasonal,
+                                                enforce_stationarity=False,
+                                                enforce_invertibility=False)
+
+                results = mod.fit()
+                
+                if results.aic < mini:
+                    mini = results.aic
+                    param_mini = param
+                    param_seasonal_mini = param_seasonal
+
+#                 print('SARIMA{}x{} - AIC:{}'.format(param, param_seasonal, results.aic))
+            except:
+                continue
+    print('The set of parameters with the minimum AIC is: SARIMA{}x{} - AIC:{}'.format(param_mini, param_seasonal_mini, mini))
+
+
 
 
 
